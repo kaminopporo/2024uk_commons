@@ -769,7 +769,9 @@
                     if (properties) {
                         const districtName = properties['GIS2024庶民院_選挙区'] || '選挙区名なし';
                         const regionName = properties['GIS2024庶民院_地方'] || '地方名なし';
-                        infoContent += `<h2>${districtName} (${regionName})</h2>`;
+
+infoContent += `<h2>${districtName}</h2>`;
+infoContent += `<h2>(${regionName})</h2>`;
 
                         // 当選者セクション
                         const winningPartyName = properties['GIS2024庶民院_First party'];
