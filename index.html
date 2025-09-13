@@ -202,11 +202,13 @@
             flex-grow: 1; /* 親要素の残りの高さを埋めるようにする */
             overflow-y: auto; /* 必要に応じて自動でスクロールバーを表示 */
         }
+        /* PCレイアウト時のサイドパネルの選挙区名・地域名のスタイルを調整 */
         #info-panel h2 {
             font-size: 1.3em;
             margin-top: 0;
-            margin-bottom: 5px; /* 自治体名の下の余白を詰める */
+            margin-bottom: 0;
             color: #2c3e50;
+            border-bottom: none; /* 区切り線を削除 */
         }
         #info-panel p {
             font-size: 0.9em; /* フォントサイズも少し小さくして行数を稼ぐ */
@@ -517,7 +519,7 @@
         // 地図の初期表示座標は指定せず、GeoJSONの読み込み後に地図範囲を自動調整する
         var map = L.map('map', { zoomControl: false });
         // ベースマップ（背景地図）の追加
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }).addTo(map);
@@ -538,7 +540,7 @@
             "Lab": { valueField: 'GIS2024庶民院_field_12', voteField: 'GIS2024庶民院_Lab', rankField: 'GIS2024庶民院_field_11', fullName: '労働党' },
             "LD": { valueField: 'GIS2024庶民院_field_14', voteField: 'GIS2024庶民院_LD', rankField: 'GIS2024庶民院_field_13', fullName: '自由民主党' },
             "RUK": { valueField: 'GIS2024庶民院_field_16', voteField: 'GIS2024庶民院_RUK', rankField: 'GIS2024庶民院_field_15', fullName: 'Reform UK' },
-            "Green": { valueField: 'GIS2024庶民院_field_18', voteField: 'GIS2024庶民院_Green', rankField: 'GIS2024庶民院_field_17', fullName: 'イングランド・ウェールズ緑の党' },
+            "Green": { valueField: 'GIS2024庶民院_field_18', voteField: 'GIS2024庶024庶民院_Green', rankField: 'GIS2024庶民院_field_17', fullName: 'イングランド・ウェールズ緑の党' },
             "SNP": { valueField: 'GIS2024庶民院_field_20', voteField: 'GIS2024庶民院_SNP', rankField: 'GIS2024庶民院_field_19', fullName: 'スコットランド国民党' },
             "PC": { valueField: 'GIS2024庶民院_field_22', voteField: 'GIS2024庶民院_PC', rankField: 'GIS2024庶民院_field_21', fullName: 'プライド・カムリ' },
             "DUP": { valueField: 'GIS2024庶民院_field_24', voteField: 'GIS2024庶民院_DUP', rankField: 'GIS2024庶民院_field_23', fullName: '民族統一党' },
@@ -612,12 +614,12 @@
                 console.log("Max party rates:", maxPartyRates);
                 
                 // 透明度を計算する関数
-                function getOpacity(rate) {
-                    if (rate === null || isNaN(rate)) {
+                function getOpacity(rate, maxRate) {
+                    if (rate === null || isNaN(rate) || maxRate === null || isNaN(maxRate) || maxRate === 0) {
                         return 0;
                     }
-                    // 得票率を0-50%の範囲に正規化し、透明度として返す
-                    const normalizedRate = Math.min(rate, 50.0) / 50.0;
+                    // 選択された政党の最大得票率を基準に正規化し、透明度として返す
+                    const normalizedRate = rate / maxRate;
                     return normalizedRate;
                 }
                 
@@ -639,9 +641,12 @@
                         const winningRate = parseFloat(properties['GIS2024庶民院_当選得票率']);
                         const winningPartyColor = partyAttributes[winningPartyName] ? partyAttributes[winningPartyName].color : '#cccccc';
 
+                        // 当選政党モードのときは既存の不透明度設定を維持する
+                        const normalizedRate = Math.min(winningRate, 50.0) / 50.0;
+
                         return {
                             fillColor: winningPartyColor,
-                            fillOpacity: getOpacity(winningRate),
+                            fillOpacity: normalizedRate,
                             weight: 1,
                             opacity: 1,
                             color: 'white',
@@ -700,11 +705,12 @@
                         }
                     } else { // 特定の政党が選択された場合
                         const selectedPartyAttr = partyAttributes[currentViewMode];
-                        if (selectedPartyAttr) {
+                        const maxRateForParty = maxPartyRates[currentViewMode];
+                        if (selectedPartyAttr && maxRateForParty !== undefined) {
                             const rate = parseFloat(properties[selectedPartyAttr.valueField]);
                             return {
                                 fillColor: selectedPartyAttr.color,
-                                fillOpacity: getOpacity(rate),
+                                fillOpacity: getOpacity(rate, maxRateForParty),
                                 weight: 1,
                                 opacity: 1,
                                 color: 'white',
@@ -762,8 +768,10 @@
                         const districtName = properties['GIS2024庶民院_選挙区'] || '選挙区名なし';
                         const regionName = properties['GIS2024庶民院_地方'] || '地方名なし';
 
-infoContent += `<h2>${districtName}</h2>`;
-infoContent += `<h2>(${regionName})</h2>`;
+                        // PCレイアウト用に2段組のまま、間に線がないようにする
+                        infoContent += `<h2>${districtName}</h2>`;
+                        infoContent += `<h2 class="region-name">(${regionName})</h2>`;
+
 
                         // 当選者セクション
                         const winningPartyName = properties['GIS2024庶民院_First party'];
